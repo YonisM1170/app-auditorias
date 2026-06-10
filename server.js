@@ -32,7 +32,11 @@ if (allowedOrigins.length) {
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 app.use(session({
   secret: sessionSecret || 'local-dev-secret-change-before-production',
   resave: false,
