@@ -24,6 +24,14 @@ async function crearTablas() {
     `);
 
     await pg.query(`
+      CREATE TABLE IF NOT EXISTS catalogos (
+        id SERIAL PRIMARY KEY,
+        tipo TEXT,
+        valor TEXT
+      );
+    `);
+
+    await pg.query(`
       CREATE TABLE IF NOT EXISTS auditorias (
         id SERIAL PRIMARY KEY,
         fecha DATE,
@@ -45,7 +53,7 @@ async function crearTablas() {
       );
     `);
 
-    console.log("✅ TABLAS POSTGRES LISTAS");
+    console.log("✅ TABLAS LISTAS");
   } catch (err) {
     console.error(err);
   }
@@ -75,7 +83,7 @@ app.use(session({
   saveUninitialized: false
 }));
 
-// ✅ HELPERS
+// ✅ AUTH
 function auth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'No autorizado' });
   next();
@@ -90,27 +98,22 @@ function admin(req, res, next) {
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
 
-  const result = await pg.query(
-    'SELECT * FROM usuarios WHERE username=$1',
-    [username]
-  );
-
+  const result = await pg.query('SELECT * FROM usuarios WHERE username=$1', [username]);
   const user = result.rows[0];
-  if (!user) return res.status(401).json({ error: 'Credenciales' });
+
+  if (!user) return res.status(401).json({ error: 'Credenciales inválidas' });
 
   const ok = await bcrypt.compare(password, user.password);
-  if (!ok) return res.status(401).json({ error: 'Credenciales' });
+  if (!ok) return res.status(401).json({ error: 'Credenciales inválidas' });
 
   req.session.userId = user.id;
   req.session.rol = user.rol;
 
-  
   res.json({
     success: true,
     username: user.username,
     rol: user.rol
   });
-
 });
 
 // ✅ USUARIOS
@@ -126,7 +129,7 @@ app.post('/api/usuarios', auth, admin, async (req, res) => {
 
   try {
     const result = await pg.query(
-      'INSERT INTO usuarios (username,password,rol) VALUES ($1,$2,$3) RETURNING *',
+      'INSERT INTO usuarios (username,password,rol) VALUES ($1,$2,$3) RETURNING id,username,rol',
       [username, hash, rol]
     );
     res.json(result.rows[0]);
@@ -140,53 +143,87 @@ app.delete('/api/usuarios/:id', auth, admin, async (req, res) => {
   res.json({ success: true });
 });
 
-// ✅ AUDITORIAS POSTGRES ✅ (ANTES SQLITE)
+// ✅ CATALOGOS
+app.get('/api/catalogos', async (req, res) => {
+  const result = await pg.query('SELECT tipo, valor FROM catalogos');
+
+  const data = { estado: [], auditor: [], mercador: [], marca: [] };
+
+  result.rows.forEach(r => {
+    if (data[r.tipo]) data[r.tipo].push(r.valor);
+  });
+
+  res.json(data);
+});
+
+app.post('/api/catalogos', async (req, res) => {
+  const { tipo, valor } = req.body;
+
+  await pg.query(
+    'INSERT INTO catalogos (tipo, valor) VALUES ($1,$2)',
+    [tipo, valor]
+  );
+
+  res.json({ success: true });
+});
+
+app.put('/api/catalogos', async (req, res) => {
+  const { tipo, valor, nuevo } = req.body;
+
+  await pg.query(
+    'UPDATE catalogos SET valor=$1 WHERE tipo=$2 AND valor=$3',
+    [nuevo, tipo, valor]
+  );
+
+  res.json({ success: true });
+});
+
+app.delete('/api/catalogos', async (req, res) => {
+  const { tipo, valor } = req.query;
+
+  await pg.query(
+    'DELETE FROM catalogos WHERE tipo=$1 AND valor=$2',
+    [tipo, valor]
+  );
+
+  res.json({ success: true });
+});
+
+// ✅ AUDITORIAS
 app.post('/api/auditorias', auth, async (req, res) => {
   const lista = req.body;
 
-  try {
-    for (const a of lista) {
-      await pg.query(`
-        INSERT INTO auditorias (
-          fecha, orden, referencia, material, descripcion,
-          valor_matriz, cantidad_requerida, estado, cantidad,
-          diferencia, sobrante_faltante, novedad,
-          auditor, mercador, marca, observaciones
-        ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16
-        )
-      `, [
-        a.fecha, a.orden, a.referencia, a.material,
-        a.descripcion, a.valorMatriz, a.cantidadRequerida,
-        a.estado, a.cantidad, a.diferencia,
-        a.sobranteFaltante, a.novedad,
-        a.auditor, a.mercador, a.marca, a.observaciones
-      ]);
-    }
-
-    res.json({ success: true });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error guardando auditorias' });
+  for (const a of lista) {
+    await pg.query(`
+      INSERT INTO auditorias (
+        fecha, orden, referencia, material, descripcion,
+        valor_matriz, cantidad_requerida, estado,
+        cantidad, diferencia, sobrante_faltante,
+        novedad, auditor, mercador, marca, observaciones
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+    `, [
+      a.fecha, a.orden, a.referencia, a.material, a.descripcion,
+      a.valorMatriz, a.cantidadRequerida, a.estado,
+      a.cantidad, a.diferencia, a.sobranteFaltante,
+      a.novedad, a.auditor, a.mercador, a.marca, a.observaciones
+    ]);
   }
+
+  res.json({ success: true });
 });
 
-// ✅ CONSULTAR AUDITORIAS
 app.get('/api/auditorias', auth, async (req, res) => {
-  const data = await pg.query(
-    'SELECT * FROM auditorias ORDER BY id DESC'
-  );
+  const data = await pg.query('SELECT * FROM auditorias ORDER BY id DESC');
   res.json(data.rows);
 });
 
-// ✅ ELIMINAR AUDITORIA
 app.delete('/api/auditorias/:id', auth, admin, async (req, res) => {
   await pg.query('DELETE FROM auditorias WHERE id=$1', [req.params.id]);
   res.json({ success: true });
 });
 
-// ✅ INICIO
+// ✅ START
 app.listen(PORT, () => {
-  console.log(`🔥 APP LISTA EN PUERTO ${PORT}`);
+  console.log(`🔥 APP FUNCIONANDO EN ${PORT}`);
 });
