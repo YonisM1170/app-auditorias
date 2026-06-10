@@ -6,15 +6,14 @@ const cors = require('cors');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const path = require('path');
-const db = require('./database'); // (se mantiene por ahora)
+const db = require('./database'); // TEMPORAL (solo auditorias)
 const pg = require('./database_pg');
 const fs = require('fs');
-const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ CREAR TABLAS POSTGRES
+// ✅ POSTGRES TABLAS
 async function crearTablas() {
   try {
     await pg.query(`
@@ -57,15 +56,14 @@ async function crearTablas() {
       );
     `);
 
-    console.log("🔥🔥🔥 TABLAS POSTGRES CREADAS 🔥🔥🔥");
+    console.log("🔥 TABLAS POSTGRES LISTAS");
   } catch (err) {
     console.error("❌ Error creando tablas:", err);
   }
 }
-
 crearTablas();
 
-// ✅ CREAR ADMIN AUTOMÁTICO
+// ✅ ADMIN
 async function crearAdmin() {
   try {
     const hash = await bcrypt.hash('admin123', 10);
@@ -77,22 +75,14 @@ async function crearAdmin() {
       ['admin', hash, 'admin']
     );
 
-    console.log("✅ Admin listo → usuario: admin | contraseña: admin123");
+    console.log("✅ Admin listo: admin / admin123");
   } catch (err) {
-    console.error("❌ Error creando admin:", err);
+    console.error(err);
   }
 }
-
 crearAdmin();
 
-// ✅ CONFIGURACIÓN GENERAL
-const isProduction = process.env.NODE_ENV === 'production';
-const sessionSecret = process.env.SESSION_SECRET;
-
-if (isProduction && (!sessionSecret || sessionSecret.length < 32)) {
-  throw new Error('Configura SESSION_SECRET correctamente');
-}
-
+// ✅ MIDDLEWARE
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(__dirname));
@@ -101,28 +91,31 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ✅ SESIONES
 app.use(session({
-  secret: sessionSecret || 'dev-secret',
+  secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: false,
-  cookie: { secure: isProduction }
+  saveUninitialized: false
 }));
 
 // ✅ HELPERS
 function cleanText(value, maxLength = 255) {
-  if (!value) return '';
-  return String(value).trim().slice(0, maxLength);
+  return String(value || '').trim().slice(0, maxLength);
 }
 
-// ✅ LOGIN (POSTGRES ✅)
-app.post('/api/login', async (req, res) => {
-  const username = cleanText(req.body?.username, 80);
-  const password = String(req.body?.password || '');
+function requireAuth(req, res, next) {
+  if (req.session.userId) return next();
+  res.status(401).json({ error: 'No autorizado' });
+}
 
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Usuario y contraseña obligatorios' });
-  }
+function requireAdmin(req, res, next) {
+  if (req.session.rol === 'admin') return next();
+  res.status(403).json({ error: 'Solo admin' });
+}
+
+// ✅ LOGIN POSTGRES
+app.post('/api/login', async (req, res) => {
+  const username = cleanText(req.body.username);
+  const password = req.body.password;
 
   try {
     const result = await pg.query(
@@ -131,35 +124,64 @@ app.post('/api/login', async (req, res) => {
     );
 
     const user = result.rows[0];
+    if (!user) return res.status(401).json({ error: 'Credenciales inválidas' });
 
-    if (!user) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
-    }
-
-    const validPassword = await bcrypt.compare(password, user.password);
-
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
-    }
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(401).json({ error: 'Credenciales inválidas' });
 
     req.session.userId = user.id;
-    req.session.username = user.username;
     req.session.rol = user.rol;
 
-    res.json({
-      success: true,
-      username: user.username,
-      rol: user.rol
-    });
+    res.json({ success: true });
 
   } catch (err) {
-    console.error("❌ Error login:", err);
+    console.error(err);
     res.status(500).json({ error: 'Error servidor' });
   }
 });
 
-// ✅ START SERVER
-app.listen(PORT, () => {
-  console.log(`✅ Sistema funcionando en puerto ${PORT}`);
+// ✅ USUARIOS POSTGRES
+app.get('/api/usuarios', requireAuth, requireAdmin, async (req, res) => {
+  const data = await pg.query('SELECT id, username, rol FROM usuarios');
+  res.json(data.rows);
 });
 
+app.post('/api/usuarios', requireAuth, requireAdmin, async (req, res) => {
+  const { username, password, rol } = req.body;
+
+  const hash = await bcrypt.hash(password, 10);
+
+  try {
+    const result = await pg.query(
+      `INSERT INTO usuarios (username, password, rol)
+       VALUES ($1,$2,$3) RETURNING id,username,rol`,
+      [username, hash, rol]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: 'Usuario existente' });
+  }
+});
+
+app.delete('/api/usuarios/:id', requireAuth, requireAdmin, async (req, res) => {
+  await pg.query('DELETE FROM usuarios WHERE id=$1', [req.params.id]);
+  res.json({ success: true });
+});
+
+// ✅ AUDITORIAS (SIGUEN EN SQLITE POR AHORA)
+app.post('/api/auditorias', requireAuth, (req, res) => {
+  const stmt = db.prepare(`INSERT INTO auditorias (fecha, orden) VALUES (?,?)`);
+
+  req.body.forEach(a => {
+    stmt.run([a.fecha, a.orden]);
+  });
+
+  stmt.finalize();
+  res.json({ success: true });
+});
+
+// ✅ START
+app.listen(PORT, () => {
+  console.log(`✅ App activa en puerto ${PORT}`);
+});
