@@ -5,8 +5,58 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const path = require('path');
 const db = require('./database');
+const pg = require('./database_pg');
 const fs = require('fs');
 const crypto = require('crypto');
+async function crearTablas() {
+  try {
+    await pg.query(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(80) UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        rol VARCHAR(20) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pg.query(`
+      CREATE TABLE IF NOT EXISTS auditorias (
+        id SERIAL PRIMARY KEY,
+        fecha DATE,
+        orden TEXT,
+        referencia TEXT,
+        material TEXT,
+        descripcion TEXT,
+        valor_matriz TEXT,
+        cantidad_requerida TEXT,
+        estado TEXT,
+        cantidad TEXT,
+        diferencia TEXT,
+        sobrante_faltante TEXT,
+        novedad TEXT,
+        auditor TEXT,
+        mercador TEXT,
+        marca TEXT,
+        observaciones TEXT
+      );
+    `);
+
+    await pg.query(`
+      CREATE TABLE IF NOT EXISTS catalogos (
+        id SERIAL PRIMARY KEY,
+        tipo TEXT,
+        valor TEXT
+      );
+    `);
+
+    console.log("✅ Tablas creadas en PostgreSQL");
+  } catch (err) {
+    console.error("❌ Error creando tablas:", err);
+  }
+}
+
+crearTablas();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
