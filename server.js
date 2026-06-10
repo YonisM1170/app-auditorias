@@ -1,3 +1,4 @@
+console.log("🚀 SERVIDOR INICIANDO...");
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -55,7 +56,7 @@ async function crearTablas() {
       );
     `);
 
-    console.log("✅ Tablas creadas en PostgreSQL");
+    console.log("🔥🔥🔥 TABLAS POSTGRES CREADAS 🔥🔥🔥");
   } catch (err) {
     console.error("❌ Error creando tablas:", err);
   }
