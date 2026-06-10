@@ -214,8 +214,45 @@ app.post('/api/auditorias', auth, async (req, res) => {
 });
 
 app.get('/api/auditorias', auth, async (req, res) => {
-  const data = await pg.query('SELECT * FROM auditorias ORDER BY id DESC');
-  res.json(data.rows);
+  try {
+    let query = 'SELECT * FROM auditorias WHERE 1=1';
+    const params = [];
+
+    if (req.query.orden) {
+      params.push(`%${req.query.orden}%`);
+      query += ` AND orden ILIKE $${params.length}`;
+    }
+
+    if (req.query.auditor) {
+      params.push(`%${req.query.auditor}%`);
+      query += ` AND auditor ILIKE $${params.length}`;
+    }
+
+    if (req.query.mercador) {
+      params.push(`%${req.query.mercador}%`);
+      query += ` AND mercador ILIKE $${params.length}`;
+    }
+
+    if (req.query.fecha) {
+      params.push(req.query.fecha);
+      query += ` AND DATE(fecha) = $${params.length}`;
+    }
+
+    if (req.query.mes) {
+      params.push(`${req.query.mes}%`);
+      query += ` AND TO_CHAR(fecha, 'YYYY-MM') LIKE $${params.length}`;
+    }
+
+    query += ' ORDER BY fecha DESC, id DESC';
+
+    const result = await pg.query(query, params);
+
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error('Error filtrando auditorias:', err);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
 });
 
 app.delete('/api/auditorias/:id', auth, admin, async (req, res) => {
