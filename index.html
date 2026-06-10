@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestión de Auditorías</title>
+   <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f7fb;
+      color: #2c3e50;
+    }
+    header {
+      background: #233b85;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+    nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tab-button {
+      border: none;
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+      padding: 10px 16px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    
+    .tab-button.active {
+        background: #e0e3ea;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+
+    .tab-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+    }
+
+    main {
+      padding: 20px;
+    }
+    .section {
+      display: none;
+    }
+    .section.active {
+      display: block;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    input[type="text"], input[type="password"], input[type="date"], select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #cad1db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+    }
+    
+    input[type="month"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #cad1db;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+    }
+    input[type="month"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    button {
+      border: none;
+      background: #233b85;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #4461b5;
+    }
+    .table-wrapper {
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 55vh;
+      margin-top: 14px;
+      position: relative;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+      table-layout: auto;
+    }
+    th, td {
+      border: 1px solid #e1e8f0;
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    td select,
+    td input[type="text"],
+    td input[type="password"],
+    td input[type="number"] {
+      width: 100%;
+      min-width: 140px;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid #cad1db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
+    td select {
+      min-width: 200px;
+    }
+    th {
+      background: #ecf0f1;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+    .small-input {
+      width: 100px;
+    }
+    .badge {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: white;
+    }
+    .badge-rojo { background: #e74c3c; }
+    .badge-naranja { background: #e67e22; }
+    .badge-verde { background: #27ae60; }
+    .filter-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .action-btn {
+      background: #4461b5;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.9rem;
+    }
+    .action-btn.delete { background: #e74c3c; }
+    .action-btn.edit { background: #f39c12; }
+    tr.fila-incompleta td {
+      background: #fff4e5;
+      border-color: #f39c12;
+    }
+    tr.fila-incompleta td:first-child {
+      border-left: 4px solid #e67e22;
+    }
+    @media (max-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      table { min-width: 900px; }
+    }
+
+    /* Login overlay - agregado sin modificar tu diseño original */
+    .login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+    .login-box {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      text-align: center;
+      min-width: 300px;
+    }
+    .login-box input {
+      margin: 10px 0;
+      padding: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .logout-btn {
+      background: #e74c3c;
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Portal de Gestión de Auditorías</h1>
+    <nav>
+      <button class="tab-button active" data-tab="gestion">Gestión De Ordenes</button>
+      <button class="tab-button" data-tab="resumen">Resumen</button>
+      <button class="tab-button" data-tab="analisis">Análisis</button>
+      <button class="tab-button" data-tab="historico">Histórico</button>
+      <button class="tab-button admin-only" data-tab="usuarios" style="display:none;">Usuarios</button>
+    </nav>
+    <div class="user-info" id="userInfo" style="display:none;">
+      <span id="userName"></span>
+      <button id="logoutBtn" class="logout-btn">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="gestion" class="section active">
+      <div class="card">
+        <h2>Entrada SAP para ordenes</h2>
+        <p>Copiar la COSIS y pegar en este campo</p>
+        <textarea id="sapInput" placeholder="Orden\Referencia\Descripción\ValorMatriz\CantidadRequerida"></textarea>
+        <pre id="parseDebug" style="display:none; white-space:pre-wrap; background:#fff5c4; padding:10px; border:1px solid #e0dca8; margin-top:10px; max-height:250px; overflow:auto;"></pre>
+        <div class="button-row">
+          <button id="parseButton">Procesar y Agregar Orden</button>
+          <button id="limpiarInput">Limpiar Entrada</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Filtros de Gestión</h2>
+        <div class="filter-row">
+          <div>
+            <label for="filterOrden">Orden</label>
+            <input type="text" id="filterOrden" placeholder="Buscar orden" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Tabla de Gestión</h2>
+        <div class="table-wrapper">
+          <table id="gestionTable">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Orden</th>
+                <th>Referencia</th>
+                <th>Material</th>
+                <th>Descripción</th>
+                <th>Valor Matriz</th>
+                <th>Cant. Requerida</th>
+                <th>Estado</th>
+                <th>Cantidad</th>
+                <th>Diferencia</th>
+                <th>Sobrante/Faltante</th>
+                <th>Novedad</th>
+                <th>Auditor</th>
+                <th>Mercador</th>
+                <th>Marca</th>
+                <th>Observaciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="button-row">
+          <button id="saveAudit">Guardar Auditoría</button>
+          <button id="clearGestion">Limpiar Gestión</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="resumen" class="section">
+      <div class="card">
+        <h2>Resumen de Auditorías</h2>
+        <div class="filter-row">
+          <div>
+            <label for="resumenOrden">Orden</label>
+            <input type="text" id="resumenOrden" placeholder="Buscar orden" />
+          </div>
+          <div>
+            <label for="resumenAuditor">Auditor</label>
+            <input type="text" id="resumenAuditor" placeholder="Buscar auditor" />
+          </div>
+          <div>
+            <label for="resumenMercador">Mercador</label>
+            <input type="text" id="resumenMercador" placeholder="Buscar mercador" />
+          </div>
+          <div>
+            <label for="resumenFecha">Fecha</label>
+            <input type="date" id="resumenFecha" />
+          </div>
+          <div>
+            <label for="resumenMes">Mes</label>
+            <input type="month" id="resumenMes" />
+          </div>
+        </div>
+      </div>
+      <div class="card table-wrapper">
+        <table id="resumenTable">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Op</th>
+              <th>Cantidad</th>
+              <th>Auditados</th>
+              <th>% Auditoría</th>
+              <th>Novedad</th>
+              <th>Auditor</th>
+              <th>Marca</th>
+              <th>Mercador</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="analisis" class="section">
+      <div class="card">
+        <h2>Análisis por Auditor</h2>
+        <div class="filter-row">
+          <div>
+            <label for="analisisAuditor">Auditor</label>
+            <input type="text" id="analisisAuditor" placeholder="Buscar auditor" />
+          </div>
+        </div>
+      </div>
+      <div class="card table-wrapper">
+        <table id="analisisTable">
+          <thead>
+            <tr>
+              <th>Auditor</th>
+              <th>Ops</th>
+              <th>Skus</th>
+              <th>Novedades</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="historico" class="section">
+      <div class="card">
+        <h2>Histórico de Auditorías</h2>
+        <div class="filter-row">
+          <div>
+            <label for="histOrden">Orden</label>
+            <input type="text" id="histOrden" placeholder="Buscar orden" />
+          </div>
+          <div>
+            <label for="histAuditor">Auditor</label>
+            <input type="text" id="histAuditor" placeholder="Buscar auditor" />
+          </div>
+          <div>
+            <label for="histFecha">Fecha</label>
+            <input type="date" id="histFecha" />
+          </div>
+          <div>
+            <label for="histMercador">Mercador</label>
+            <input type="text" id="histMercador" placeholder="Buscar mercador" />
+          </div>
+        </div>
+      </div>
+      
+    <div class="card">
+        <div class="button-row">
+          <button id="exportHistoricoBtn" class="action-btn">Exportar a Excel</button>
+        </div>
+        <div class="table-wrapper">
+            <table id="historicoTable">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Orden</th>
+                    <th>Referencia</th>
+                    <th>Material</th>
+                    <th>Descripción</th>
+                    <th>Valor Matriz</th>
+                    <th>Cant. Requerida</th>
+                    <th>Estado</th>
+                    <th>Cantidad</th>
+                    <th>Diferencia</th>
+                    <th>Sobrante/Faltante</th>
+                    <th>Novedad</th>
+                    <th>Auditor</th>
+                    <th>Mercador</th>
+                    <th>Marca</th>
+                    <th>Observaciones</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+            <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    </section>
+    <section id="usuarios" class="section">
+      <div class="card">
+        <h2>Gestion de Usuarios</h2>
+        <div class="filter-row">
+          <div>
+            <label for="newUsername">Usuario</label>
+            <input type="text" id="newUsername" placeholder="usuario" autocomplete="off" />
+          </div>
+          <div>
+            <label for="newPassword">Contrasena</label>
+            <input type="password" id="newPassword" placeholder="Minimo 8 caracteres" autocomplete="new-password" />
+          </div>
+          <div>
+            <label for="newRole">Rol</label>
+            <select id="newRole">
+              <option value="usuario">Usuario</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+        </div>
+        <div class="button-row">
+          <button id="createUserBtn">Crear Usuario</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table id="usuariosTable">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Creado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Gestion de Listas</h2>
+        <div class="filter-row">
+          <div>
+            <label for="catalogAdminType">Lista</label>
+            <select id="catalogAdminType">
+              <option value="estado">Estado</option>
+              <option value="auditor">Auditor</option>
+              <option value="mercador">Mercador</option>
+              <option value="marca">Marca</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table id="catalogosAdminTable">
+            <thead>
+              <tr>
+                <th>Valor</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Login overlay -->
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-box">
+      <h2>Iniciar Sesión</h2>
+      <input type="text" id="loginUser" placeholder="Usuario">
+      <input type="password" id="loginPass" placeholder="Contraseña">
+      <button id="loginBtn">Ingresar</button>
+      <p style="margin-top:15px; font-size:12px; color:#666;">Solicita tus credenciales al administrador.</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="/script.js"></script>
+</body>
+</html>
