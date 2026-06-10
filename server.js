@@ -8,6 +8,10 @@ const db = require('./database');
 const pg = require('./database_pg');
 const fs = require('fs');
 const crypto = require('crypto');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
 async function crearTablas() {
   try {
     await pg.query(`
@@ -58,8 +62,6 @@ async function crearTablas() {
 
 crearTablas();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 const sessionSecret = process.env.SESSION_SECRET;
 
