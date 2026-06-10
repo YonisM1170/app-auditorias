@@ -104,7 +104,13 @@ app.post('/api/login', async (req, res) => {
   req.session.userId = user.id;
   req.session.rol = user.rol;
 
-  res.json({ success: true });
+  
+  res.json({
+    success: true,
+    username: user.username,
+    rol: user.rol
+  });
+
 });
 
 // ✅ USUARIOS
