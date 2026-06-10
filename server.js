@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+
 async function crearTablas() {
   try {
     await pg.query(`
@@ -61,6 +62,11 @@ async function crearTablas() {
 }
 
 crearTablas();
+
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en puerto ${PORT}`);
+});
+
 
 const isProduction = process.env.NODE_ENV === 'production';
 const sessionSecret = process.env.SESSION_SECRET;
