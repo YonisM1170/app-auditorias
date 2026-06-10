@@ -876,7 +876,7 @@ function renderResumen(data) {
     if (ordenFiltro && !String(row.orden || '').toLowerCase().includes(ordenFiltro)) return;
     if (auditorFiltro && !String(row.auditor || '').toLowerCase().includes(auditorFiltro)) return;
     if (mercadorFiltro && !String(row.mercador || '').toLowerCase().includes(mercadorFiltro)) return;
-    if (fechaFiltro && row.fecha !== fechaFiltro) return;
+    if (fechaFiltro && !row.fecha.startsWith(fechaFiltro.split('/').reverse().join('-'))) return;
     if (mesFiltro && !row.fecha.startsWith(mesFiltro)) return;
     
     const key = `${row.fecha}|${row.orden}|${row.auditor}|${row.mercador}|${row.marca}`;
