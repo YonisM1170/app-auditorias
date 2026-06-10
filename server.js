@@ -264,3 +264,22 @@ app.delete('/api/auditorias/:id', auth, admin, async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🔥 APP FUNCIONANDO EN ${PORT}`);
 });
+
+const { exec } = require('child_process');
+
+app.get('/backup', (req, res) => {
+  const fecha = new Date().toISOString().slice(0, 10);
+  const archivo = `backup_${fecha}.sql`;
+
+  const comando = `pg_dump "${process.env.DATABASE_URL}" > ${archivo}`;
+
+  exec(comando, (error) => {
+    if (error) {
+      console.error("❌ Error backup:", error);
+      return res.status(500).send("Error creando backup");
+    }
+
+    console.log("✅ Backup creado:", archivo);
+    res.send("✅ Backup creado correctamente");
+  });
+});
